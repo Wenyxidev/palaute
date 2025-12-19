@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Asiakaspalaute</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+    height: 100vh;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #333;
+    user-select: none;
+  }
+
+  .container {
+    background: #fff;
+    padding: 40px 60px;
+    border-radius: 20px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+    width: 380px;
+    text-align: center;
+    opacity: 1;
+    transition: opacity 0.5s ease;
+  }
+
+  h1 {
+    font-weight: 600;
+    font-size: 1.8rem;
+    margin-bottom: 40px;
+    color: #2c3e50;
+  }
+
+  .emoji-row {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+  }
+
+  button {
+    font-size: 72px;
+    padding: 12px;
+    background: #e9eef7;
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 5px 15px rgba(109, 142, 199, 0.35);
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s, box-shadow 0.2s;
+  }
+
+  button:hover {
+    background-color: #d2dff3;
+    box-shadow: 0 8px 22px rgba(109, 142, 199, 0.55);
+    transform: scale(1.15);
+  }
+
+  button:active {
+    transform: scale(0.9);
+    box-shadow: 0 3px 10px rgba(109, 142, 199, 0.25);
+  }
+
+  #message-container {
+    background: #fefefe;
+    padding: 40px 40px 30px 40px;
+    border-radius: 20px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+    width: 360px;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(25px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    display: none;
+    color: #2c3e50;
+  }
+
+  #message-container.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  #message {
+    font-size: 2.8rem;
+    font-weight: 600;
+    margin-bottom: 28px;
+  }
+
+  .progress-container {
+    width: 280px;
+    height: 12px;
+    background: linear-gradient(90deg, #e0e0e0, #f3f3f3);
+    margin: 0 auto;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #4caf50, #81c784);
+    transition: width 1.5s ease-in-out;
+  }
+
+  .dashboard {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    backdrop-filter: blur(5px);
+    background: rgba(0, 0, 0, 0.35);
+    display: none;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .dashboard-content {
+    background: #fff;
+    padding: 30px 40px;
+    border-radius: 15px;
+    width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.25);
+    text-align: center;
+  }
+
+  #feedbackList {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+    text-align: left;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  .close-btn {
+    margin-top: 20px;
+    background: #4a90e2;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+
+  .close-btn:hover {
+    background: #3575c4;
+  }
+
+  canvas {
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+
+  <div class="container" id="main">
+    <h1>Miten asiointi sujui tänään?</h1>
+    <div class="emoji-row">
+      <button onclick="giveFeedback('😊')">😊</button>
+      <button onclick="giveFeedback('😐')">😐</button>
+      <button onclick="giveFeedback('😞')">😞</button>
+    </div>
+  </div>
+
+  <div id="message-container">
+    <div id="message">Kiitos palautteestasi!</div>
+    <div class="progress-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+  </div>
+
+  <div id="dashboard" class="dashboard">
+    <div class="dashboard-content">
+      <h2>Palautteet</h2>
+      <h3>Tilastot</h3>
+      <div id="stats"></div>
+      <canvas id="chart" width="400" height="200"></canvas>
+      <h3>Kaikki palautteet</h3>
+      <ul id="feedbackList"></ul>
+      <button class="close-btn" onclick="closeDashboard()">Sulje</button>
+    </div>
+  </div>
+
+<script>
+let feedbackHistory = [];
+
+function giveFeedback(choice) {
+  feedbackHistory.push({
+    value: choice,
+    time: new Date().toLocaleTimeString()
+  });
+
+  const main = document.getElementById("main");
+  const msgContainer = document.getElementById("message-container");
+  const bar = document.getElementById("progressBar");
+
+  main.style.opacity = 0;
+  setTimeout(() => {
+    main.style.display = "none";
+    msgContainer.style.display = "block";
+    setTimeout(() => msgContainer.classList.add("visible"), 50);
+    bar.style.width = "0%";
+    setTimeout(() => bar.style.width = "100%", 100);
+  }, 500);
+
+  setTimeout(() => {
+    msgContainer.classList.remove("visible");
+    setTimeout(() => {
+      msgContainer.style.display = "none";
+      main.style.display = "block";
+      setTimeout(() => main.style.opacity = 1, 50);
+      bar.style.width = "0%";
+    }, 500);
+  }, 2200);
+}
+
+function openDashboard() {
+  document.getElementById("dashboard").style.display = "flex";
+  updateDashboard();
+}
+
+function closeDashboard() {
+  document.getElementById("dashboard").style.display = "none";
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "y") {
+    openDashboard();
+  }
+});
+
+function updateDashboard() {
+  const list = document.getElementById("feedbackList");
+  const statsBox = document.getElementById("stats");
+  const chartCanvas = document.getElementById("chart");
+  const ctx = chartCanvas.getContext("2d");
+
+  list.innerHTML = "";
+  feedbackHistory.forEach((f, i) => {
+    const li = document.createElement("li");
+    li.textContent = `${i + 1}. ${f.value} – ${f.time}`;
+    list.appendChild(li);
+  });
+
+  let good = feedbackHistory.filter(f => f.value === "😊").length;
+  let neutral = feedbackHistory.filter(f => f.value === "😐").length;
+  let bad = feedbackHistory.filter(f => f.value === "😞").length;
+  let total = feedbackHistory.length || 1;
+
+  statsBox.innerHTML = `
+    😊: ${good} (${Math.round(good/total*100)}%)<br>
+    😐: ${neutral} (${Math.round(neutral/total*100)}%)<br>
+    😞: ${bad} (${Math.round(bad/total*100)}%)
+  `;
+
+  ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+
+  const values = [good, neutral, bad];
+  const colors = ["#4caf50", "#ffc107", "#f44336"];
+  const labels = ["😊", "😐", "😞"];
+
+  const barWidth = 80;
+  const barGap = 30;
+  const xStart = 40;
+
+  values.forEach((v, i) => {
+    const x = xStart + i * (barWidth + barGap);
+    const height = v * 25;
+
+    ctx.fillStyle = colors[i];
+    ctx.fillRect(x, 180 - height, barWidth, height);
+
+    ctx.fillStyle = "#333";
+    ctx.font = "20px Inter";
+    ctx.fillText(labels[i], x + 25, 195);
+    ctx.fillText(v, x + 30, 170 - height);
+  });
+}
+</script>
+
+</body>
+</html>
